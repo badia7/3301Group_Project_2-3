@@ -1,0 +1,163 @@
+---
+title: "Project 2 & 3"
+author: "August Slawienski.1 & Nick Badia.7 & Cameron Erdman.35 & Matthew Kuriakose.10"
+date: "2022-12-10"
+output: html_document
+---
+
+```{r message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(broom)
+```
+
+```{r}
+## Load Data into R
+library(readr)
+library(GGally)
+Cravens <- read_csv("C://Users//Augus//OneDrive//Desktop//Stat3301//Project  2 and 3//Cravens.csv")
+
+pairs(Cravens)
+
+## Scatterplot and correlation matrix
+ggpairs(Cravens)
+
+cor(Cravens)
+
+## Accounts and ratings appear to be heavily correlated with many other variables in the model.
+
+## Only completing Main Effects Model
+full <- lm(Sales ~ Time + Poten + AdvExp + Share + Change + Accounts + Work + Rating, data=Cravens)
+summary(full)
+```
+
+
+```{r}
+library(leaps)
+## Model Space Exploration
+## p is 8 for this exploration meaning that there are only 256 possible models
+regfit_full <- regsubsets(Sales~., data=Cravens, nvmax=8)
+reg.summary <- summary(regfit_full)
+
+reg.summary$bic
+## Best models in terms of BIC are 4-6 variables which we can utilize previous results from summary
+
+## Summary indicates that 5 variable model contains best BIC so we will utilize that number of variables
+
+reg.summary
+
+## According to regsubsets function the variables "Time", "Poten", "AdvExp", "Share" and "Change" are most important in predicting sales
+```
+
+```{r}
+## New model
+BestModel <- lm(Sales~ Time + Poten + AdvExp + Share + Change, data=Cravens)
+summary(BestModel)
+
+## Diagnostic Tests
+
+## Residuals vs fitted values
+
+augment(BestModel) %>% ggplot(aes(x=.fitted, y=.resid)) + geom_point() + geom_hline(yintercept = 0) + xlab("Fitted Values") + ylab("Residuals") + ggtitle("Residuals Versus Fitted Values")
+
+## Variance seems somewhat consistent across fitted values
+
+## Histogram of Errors
+
+augment(BestModel) %>% ggplot(aes(x=.resid)) + geom_histogram() + xlab("Residuals") + ylab("Frequency") + ggtitle("Histogram of Errors")
+
+## Histogram of errors seems approximately normal
+
+
+## QQ plot
+
+qqnorm(resid(BestModel));qqline(resid(BestModel))
+
+## QQ plot looks reasonable indicating that normallity is reasonable
+```
+
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readr)
+dat <- read.csv("/Users/nickbadia/Downloads/CaloriesProject23.csv")
+```
+
+```{r}
+head(dat)
+```
+
+
+```{r}
+model1 <- lm(calories ~ time, dat)
+model2 <- lm(calories ~ time + type, dat)
+model3 <- lm(calories ~ time * type, dat)
+```
+
+```{r}
+AIC1 <- extractAIC(model1)
+AIC2 <- extractAIC(model2)
+AIC3 <- extractAIC(model3)
+BIC1 <- extractAIC(model1, k = log(nrow(dat)))
+BIC2 <- extractAIC(model2, k = log(nrow(dat)))
+BIC3 <- extractAIC(model3, k = log(nrow(dat)))
+```
+
+```{r}
+print(paste("AIC for Model 1:", AIC1[2]))
+print(paste("AIC for Model 2:", AIC2[2]))
+print(paste("AIC for Model 3:", AIC3[2]))
+print(paste("BIC for Model 1:", BIC1[2]))
+print(paste("BIC for Model 2:", BIC2[2]))
+print(paste("BIC for Model 3:", BIC3[2]))
+```
+
+```{r}
+min(BIC1[2], BIC2[2], BIC3[2])
+```
+
+Model 3 returned the lowest AIC and the lowest BIC of the three models and such we can say that the interaction effects model between time and type to be the best model for predicting caloric intake.
+
+```{r message=FALSE}
+set.seed(33013301)
+calProj = read.csv("/Users/nickbadia/Downloads/CaloriesProject23.csv")
+
+head(rep(1:5, 26), 126)
+
+sample(head(rep(1:5, 26), 126))
+
+calProj = calProj %>% mutate(fold = sample(head(rep(1:5, 26), 126)))
+
+calProj %>% select(calories, time, type, fold)
+
+SLR = MLR = IMLR = vector("list", 5)
+
+for(k in 1:5) {
+  SLR[[k]] = lm(calories ~ time, data = calProj %>% filter(fold != k))
+  MLR[[k]] = lm(calories~type+time, data = calProj %>% filter(fold!=k))
+  
+  IMLR[[k]] = lm(calories~type*time, data = calProj %>% filter(fold!=k))
+  
+}
+
+summary(SLR[[2]])
+
+
+SLR.pred = MLR.pred = IMLR.pred = rep(NA, 126)
+for(i in 1:126) {
+  foldi = calProj$fold[i]
+  SLR.pred[i] = predict(SLR[[foldi]], newdata = calProj[i,])
+  MLR.pred[i] = predict(MLR[[foldi]], newdata = calProj[i,])
+  IMLR.pred[i] = predict(IMLR[[foldi]], newdata = calProj[i,])
+}
+
+
+mean((calProj$calories - SLR.pred)^2)
+
+mean((calProj$calories - MLR.pred)^2)
+
+mean((calProj$calories - IMLR.pred)^2)
+```
+
+Model 3 would be used since it has the lowest prediction error (3860.729) of the three.
